@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:start/auction.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 // Main Function to Initialize Firebase
@@ -105,13 +106,14 @@ class _AuctionItemState extends State<AuctionItem> {
   late int _timeLeft;
   late double _price;
   bool _isHovering = false;
+  Timer? _timer; // Declare a Timer variable
 
   @override
   void initState() {
     super.initState();
     _timeLeft = widget.initialTime;
     _price = widget.initialPrice;
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeLeft > 0 && _price > 0) {
         setState(() {
           _timeLeft--;
@@ -121,6 +123,12 @@ class _AuctionItemState extends State<AuctionItem> {
         timer.cancel();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer to prevent memory leaks
+    super.dispose();
   }
 
   @override
@@ -160,11 +168,13 @@ class _AuctionItemState extends State<AuctionItem> {
                   children: <Widget>[
                     Text(
                       'Time left: $_timeLeft seconds',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'Current price: \$${_price.toStringAsFixed(2)}',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -177,45 +187,6 @@ class _AuctionItemState extends State<AuctionItem> {
 }
 
 class ReverseAuctionHomePage extends StatelessWidget {
-  final List<Map<String, dynamic>> products = [
-    {
-      'name': '1987 Honda Accord',
-      'initialPrice': 5000.0,
-      'initialTime': 3600,
-      'imageUrl': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0MXwvD6nDU43UjWGT3tYESlnzwQxO87TH-Q&s',
-    },
-    {
-      'name': 'Kids Jeans',
-      'initialPrice': 300.0,
-      'initialTime': 1800,
-      'imageUrl': 'https://www.kidrepublic.co.nz/user/images/85908.jpg',
-    },
-    {
-      'name': 'HP Laptop',
-      'initialPrice': 8000.0,
-      'initialTime': 7200,
-      'imageUrl': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ98O8WMdb_VjGK56F6N8FLgIbD-G81qcnVQw&s',
-    },
-    {
-      'name': 'Nike Air Force 1',
-      'initialPrice': 200.0,
-      'initialTime': 3600,
-      'imageUrl': 'https://asnovel.de/cdn/shop/products/SBBSale.jpg?v=1637874889',
-    },
-    {
-      'name': 'Tesla Model S',
-      'initialPrice': 10000.0,
-      'initialTime': 10800,
-      'imageUrl': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSuGhwhyGPU-e_Ns13u10W8M-JWDiPV5uahpg&s',
-    },
-    {
-      'name': 'RayBand Sunglasses',
-      'initialPrice': 500.0,
-      'initialTime': 5400,
-      'imageUrl': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRj4Dm1ENmrHn_XsX8HLwWAUAjT5gXWgWDTnA&s',
-    },
-  ];
-
   ReverseAuctionHomePage({super.key});
 
   @override
@@ -226,35 +197,20 @@ class ReverseAuctionHomePage extends StatelessWidget {
         child: Column(
           children: <Widget>[
             const Text(
-              'Featured listings',
+              'Featured Listings',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  return AuctionItem(
-                    initialTime: products[index]['initialTime'],
-                    initialPrice: products[index]['initialPrice'],
-                    imageUrl: products[index]['imageUrl'],
-                    productName: products[index]['name'],
-                  );
-                },
-              ),
+              child: AuctionList(), // Replace with the new AuctionList widget
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AuctionPage(AuctionPage)), // Ensure this points to your AuctionPage
+                  MaterialPageRoute(
+                      builder: (context) => const AuctionPage()), // Corrected instantiation of AuctionPage
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -270,4 +226,39 @@ class ReverseAuctionHomePage extends StatelessWidget {
   }
 }
 
-// aseihjfiwghwiuhgqoihoh
+class AuctionList extends StatelessWidget {
+  const AuctionList({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('auctions').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        var auctionListings = snapshot.data!.docs;
+
+        return GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.75,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: auctionListings.length,
+          itemBuilder: (context, index) {
+            var auction = auctionListings[index].data() as Map<String, dynamic>;
+            return AuctionItem(
+              initialTime: auction['duration'].toInt(), // Adjust to your Firestore field
+              initialPrice: auction['price'].toDouble(), // Adjust to your Firestore field
+              imageUrl: auction['images'][0], // Assuming the first image is used
+              productName: auction['title'], // Adjust to your Firestore field
+            );
+          },
+        );
+      },
+    );
+  }
+}

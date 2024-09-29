@@ -31,7 +31,14 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
+  # Add Firebase dependencies
+  pod 'Firebase/Core'  # Include core Firebase services
+  pod 'Firebase/Firestore'  # Firestore
+  pod 'Firebase/Auth'  # Firebase Authentication
+  pod 'Firebase/Storage'  # For image uploads if needed
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  
   target 'RunnerTests' do
     inherit! :search_paths
   end

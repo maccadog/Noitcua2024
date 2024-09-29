@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class AuctionPage extends StatefulWidget {
-  const AuctionPage(Type loginPage, {super.key});
+  const AuctionPage({super.key});
 
   @override
   _AuctionPageState createState() => _AuctionPageState();
@@ -12,18 +15,40 @@ class AuctionPage extends StatefulWidget {
 class _AuctionPageState extends State<AuctionPage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  double _sliderValue = 1; // Default duration for auction
-  List<File> _images = []; // List to hold images
+  double _sliderValue = 1;
+  List<File> _images = [];
+  Timer? _timer;
 
   Future<void> _pickImages() async {
-    final ImagePicker picker = ImagePicker();
-    final List<XFile>? pickedImages = await picker.pickMultiImage();
+    try {
+      final ImagePicker picker = ImagePicker();
+      final List<XFile>? pickedImages = await picker.pickMultiImage();
 
-    if (pickedImages != null && pickedImages.isNotEmpty) {
-      setState(() {
-        _images = pickedImages.map((image) => File(image.path)).toList();
-      });
+      if (pickedImages != null && pickedImages.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _images = pickedImages.map((image) => File(image.path)).toList();
+          });
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking images: $e')),
+      );
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _titleController.dispose();
+    _priceController.dispose();
+    super.dispose();
   }
 
   @override
@@ -38,7 +63,6 @@ class _AuctionPageState extends State<AuctionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title Input
               const Text(
                 'Title of Listing',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -51,7 +75,6 @@ class _AuctionPageState extends State<AuctionPage> {
               ),
               const SizedBox(height: 16),
 
-              // Price Input
               const Text(
                 'Price of Listing',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -65,7 +88,6 @@ class _AuctionPageState extends State<AuctionPage> {
               ),
               const SizedBox(height: 16),
 
-              // Slider for Duration
               const Text(
                 'Auction Duration (days)',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -77,14 +99,15 @@ class _AuctionPageState extends State<AuctionPage> {
                 divisions: 29,
                 label: '${_sliderValue.round()} days',
                 onChanged: (value) {
-                  setState(() {
-                    _sliderValue = value;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _sliderValue = value;
+                    });
+                  }
                 },
               ),
               const SizedBox(height: 16),
 
-              // Image Picker Section
               const Text(
                 'Upload Images',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -95,7 +118,6 @@ class _AuctionPageState extends State<AuctionPage> {
               ),
               const SizedBox(height: 16),
 
-              // Display selected images
               _images.isNotEmpty
                   ? SizedBox(
                       height: 100,
@@ -118,15 +140,12 @@ class _AuctionPageState extends State<AuctionPage> {
                   : const Text('No images selected'),
               const SizedBox(height: 16),
 
-              // Submit Button
               Center(
                 child: ElevatedButton(
                   onPressed: () {
-                    // Implement submission functionality here
                     if (_titleController.text.isNotEmpty &&
                         _priceController.text.isNotEmpty &&
                         _images.isNotEmpty) {
-                      // Logic for handling auction submission
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Auction created successfully!'),

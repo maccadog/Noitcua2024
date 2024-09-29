@@ -61,7 +61,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '450739637054',
     projectId: 'auction-b92c7',
     storageBucket: 'auction-b92c7.appspot.com',
-    iosClientId: '450739637054-vum9d6j4asbb96ln9beva047det5l9li.apps.googleusercontent.com',
+    iosClientId:
+        '450739637054-vum9d6j4asbb96ln9beva047det5l9li.apps.googleusercontent.com',
     iosBundleId: 'com.example.start',
   );
 
@@ -71,8 +72,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '450739637054',
     projectId: 'auction-b92c7',
     storageBucket: 'auction-b92c7.appspot.com',
-    iosClientId: '450739637054-vum9d6j4asbb96ln9beva047det5l9li.apps.googleusercontent.com',
+    iosClientId:
+        '450739637054-vum9d6j4asbb96ln9beva047det5l9li.apps.googleusercontent.com',
     iosBundleId: 'com.example.start',
   );
-
 }

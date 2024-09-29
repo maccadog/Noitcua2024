@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:firebase_storage/firebase_storage.dart'; // Import for Firebase Storage
 
 class AuctionPage extends StatefulWidget {
   const AuctionPage({super.key});
@@ -36,6 +36,83 @@ class _AuctionPageState extends State<AuctionPage> {
         SnackBar(content: Text('Error picking images: $e')),
       );
     }
+  }
+
+  // Method to submit auction details to Firestore and upload images to Firebase Storage
+  Future<void> _submitAuction() async {
+    if (_titleController.text.isNotEmpty &&
+        _priceController.text.isNotEmpty &&
+        _images.isNotEmpty) {
+      String title = _titleController.text;
+      double price = double.tryParse(_priceController.text) ?? 0.0;
+      int duration = _sliderValue.toInt();
+
+      // Upload images to Firebase Storage and get URLs
+      List<String> imageUrls = await _uploadImagesToStorage();
+
+      // Check if any image URLs were returned
+      if (imageUrls.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No images uploaded!')),
+        );
+        return;
+      }
+
+      // Create auction entry in Firestore
+      await FirebaseFirestore.instance.collection('auctions').add({
+        'title': title,
+        'price': price,
+        'duration': duration,
+        'images': imageUrls, // Store the image URLs
+      }).then((value) {
+        print('Auction created with ID: ${value.id}'); // Debug log
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Auction created successfully!')),
+      );
+
+      // Clear fields after submission
+      _titleController.clear();
+      _priceController.clear();
+      setState(() {
+        _images = [];
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields and add at least one image.')),
+      );
+    }
+  }
+
+  // Method to upload images to Firebase Storage and get their URLs
+  Future<List<String>> _uploadImagesToStorage() async {
+    List<String> imageUrls = [];
+    for (var image in _images) {
+      String fileName = image.path.split('/').last;
+      try {
+        // Upload the file to Firebase Storage
+        Reference storageRef =
+            FirebaseStorage.instance.ref().child('auction_images/$fileName');
+        UploadTask uploadTask = storageRef.putFile(image);
+
+        // Monitor the upload progress
+        uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+          print('Uploading ${snapshot.bytesTransferred} of ${snapshot.totalBytes} bytes');
+        });
+
+        // Get the download URL after the file is uploaded
+        TaskSnapshot snapshot = await uploadTask;
+        String downloadUrl = await snapshot.ref.getDownloadURL();
+        imageUrls.add(downloadUrl);
+        print('Uploaded image URL: $downloadUrl'); // Debug log
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading image: $e')),
+        );
+      }
+    }
+    return imageUrls;
   }
 
   @override
@@ -142,23 +219,7 @@ class _AuctionPageState extends State<AuctionPage> {
 
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    if (_titleController.text.isNotEmpty &&
-                        _priceController.text.isNotEmpty &&
-                        _images.isNotEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Auction created successfully!'),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please fill all fields and add at least one image.'),
-                        ),
-                      );
-                    }
-                  },
+                  onPressed: _submitAuction,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     textStyle: const TextStyle(fontSize: 18),

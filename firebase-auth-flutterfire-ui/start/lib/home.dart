@@ -2,9 +2,9 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:start/auction.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
+import 'auction.dart'; // Import the auction page
 
 // Main Function to Initialize Firebase
 void main() async {
@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: HomeScreen(), // Updated to use HomeScreen as the main page
+      home: const HomeScreen(), // Updated to use HomeScreen as the main page
     );
   }
 }
@@ -31,6 +31,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('Noitcua App'),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
@@ -146,6 +147,9 @@ class _AuctionItemState extends State<AuctionItem> {
                   child: Image.network(
                     widget.imageUrl,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset('assets/placeholder.png'); // Placeholder image in case of network error
+                    },
                   ),
                 ),
                 Padding(
@@ -187,7 +191,7 @@ class _AuctionItemState extends State<AuctionItem> {
 }
 
 class ReverseAuctionHomePage extends StatelessWidget {
-  ReverseAuctionHomePage({super.key});
+  const ReverseAuctionHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +206,7 @@ class ReverseAuctionHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: AuctionList(), // Replace with the new AuctionList widget
+              child: AuctionList(), // Displays the list of auctions
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -210,7 +214,7 @@ class ReverseAuctionHomePage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const AuctionPage()), // Corrected instantiation of AuctionPage
+                      builder: (context) => const AuctionPage()), // Navigate to the auction page
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -250,11 +254,18 @@ class AuctionList extends StatelessWidget {
           itemCount: auctionListings.length,
           itemBuilder: (context, index) {
             var auction = auctionListings[index].data() as Map<String, dynamic>;
+
+            // Safeguard: Check if 'images' field exists and is not empty
+            List<dynamic>? images = auction['images'] as List<dynamic>?;
+            String imageUrl = images != null && images.isNotEmpty 
+              ? images[0] 
+              : 'assets/placeholder.png'; // Fallback to local placeholder if no images
+
             return AuctionItem(
-              initialTime: auction['duration'].toInt(), // Adjust to your Firestore field
-              initialPrice: auction['price'].toDouble(), // Adjust to your Firestore field
-              imageUrl: auction['images'][0], // Assuming the first image is used
-              productName: auction['title'], // Adjust to your Firestore field
+              initialTime: auction['duration'].toInt(), // Auction duration in seconds
+              initialPrice: auction['price'].toDouble(), // Auction starting price
+              imageUrl: imageUrl, // Safe image URL with fallback
+              productName: auction['title'], // Product name
             );
           },
         );
